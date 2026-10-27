@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "vitest run",
-    "dev": "tsx watch src/local.ts",
+    "dev": "tsx watch --env-file=.env src/local.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
