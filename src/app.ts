@@ -1,7 +1,8 @@
 import express, { type ErrorRequestHandler } from 'express'
-import { assinaturaValida } from './assinatura.js'
+import { assinaturaValida, tokenValido } from './assinatura.js'
 import { salvarVenda } from './db.js'
 import { exigirEnv } from './env.js'
+import { filtrosSchema, gerarRelatorio } from './relatorio.js'
 import { vendaSchema } from './schema.js'
 
 declare module 'node:http' {
@@ -38,6 +39,25 @@ app.post('/webhooks/:plataforma', async (req, res) => {
   const plataforma = req.params.plataforma.toLowerCase()
   const aplicada = await salvarVenda(plataforma, resultado.data, req.body)
   res.json({ resultado: aplicada ? 'aplicada' : 'ignorada' })
+})
+
+app.get('/relatorio', async (req, res) => {
+  const token = req.header('Authorization')?.replace(/^Bearer /, '')
+  if (!tokenValido(token, exigirEnv('RELATORIO_TOKEN'))) {
+    res.status(401).json({ erro: 'token inválido' })
+    return
+  }
+
+  const filtros = filtrosSchema.safeParse(req.query)
+  if (!filtros.success) {
+    res.status(400).json({
+      erro: 'filtros inválidos',
+      detalhes: filtros.error.issues.map((i) => ({ campo: i.path.join('.'), mensagem: i.message })),
+    })
+    return
+  }
+
+  res.json(await gerarRelatorio(filtros.data))
 })
 
 const tratarErro: ErrorRequestHandler = (err, _req, res, _next) => {
